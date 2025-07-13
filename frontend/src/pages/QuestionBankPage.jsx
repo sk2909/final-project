@@ -3,11 +3,38 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import { mockQuestions } from '../utils/mockData';
 
 const QuestionBankPage = () => {
-  const [questions, setQuestions] = useState(mockQuestions);
-  const [filteredQuestions, setFilteredQuestions] = useState(mockQuestions);
+  const [questions, setQuestions] = useState([]);
+  const [filteredQuestions, setFilteredQuestions] = useState([]);
+  // Fetch all questions from backend on mount
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('http://localhost:8090/api/admin/questions', {
+          headers: {
+            'Authorization': token,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Normalize for UI compatibility
+          const normalized = data.map(q => ({
+            ...q,
+            question: q.text || q.question,
+            id: q.questionId || q.id
+          }));
+          setQuestions(normalized);
+          setFilteredQuestions(normalized);
+        }
+      } catch (e) {
+        // Optionally handle error
+      }
+    };
+    fetchQuestions();
+  }, []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [filters, setFilters] = useState({
@@ -152,12 +179,167 @@ const QuestionBankPage = () => {
     applyFilters();
   }, [filters, questions]);
 
+  // Import/Export state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  // Export filtered questions as human-readable text file
+  const handleExport = () => {
+    let text = '';
+    filteredQuestions.forEach((q, idx) => {
+      text += `Q${idx + 1}: ${q.question}\n`;
+      text += `Options: ${q.options.join(', ')}\n`;
+      text += `Category: ${q.category} | Difficulty: ${q.difficulty} | Marks: ${q.marks}\n`;
+      if (q.explanation) text += `Explanation: ${q.explanation}\n`;
+      text += '\n';
+    });
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'questions_export.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import questions from pasted/uploaded text (human-readable format)
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      // Parse the human-readable text format
+      const lines = importText.split(/\r?\n/);
+      const questions = [];
+      let current = {};
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('Q')) {
+          if (current.text) questions.push(current);
+          current = { text: line.replace(/^Q\d+:\s*/, '') };
+        } else if (line.startsWith('Options:')) {
+          current.options = line.replace('Options:', '').split(',').map(opt => opt.trim());
+        } else if (line.startsWith('Category:')) {
+          // Category: ... | Difficulty: ... | Marks: ...
+          const catMatch = line.match(/Category:\s*([^|]*)/);
+          const diffMatch = line.match(/Difficulty:\s*([^|]*)/);
+          const marksMatch = line.match(/Marks:\s*(\d+)/);
+          if (catMatch) current.category = catMatch[1].trim();
+          if (diffMatch) current.difficulty = diffMatch[1].trim();
+          if (marksMatch) current.marks = parseInt(marksMatch[1].trim(), 10);
+        } else if (line.startsWith('Explanation:')) {
+          current.explanation = line.replace('Explanation:', '').trim();
+        } else if (line === '' && Object.keys(current).length > 0 && current.text) {
+          // End of question block
+          questions.push(current);
+          current = {};
+        }
+      }
+      // Push last question if not already
+      if (current.text) questions.push(current);
+      // Validate and import
+      if (!Array.isArray(questions) || questions.length === 0) throw new Error('Invalid format');
+      const token = localStorage.getItem('token');
+      for (const q of questions) {
+        const payload = {
+          text: q.text,
+          options: q.options,
+          correctAnswer: q.options && q.options.length > 0 ? q.options[0] : '', // default to first option
+          category: q.category,
+          difficulty: q.difficulty,
+          marks: q.marks,
+          explanation: q.explanation
+        };
+        await fetch('http://localhost:8090/api/admin/questions', {
+          method: 'POST',
+          headers: {
+            'Authorization': token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+      // Refresh questions after import
+      const res = await fetch('http://localhost:8090/api/admin/questions', {
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const normalized = data.map(q => ({
+          ...q,
+          question: q.text || q.question,
+          id: q.questionId || q.id
+        }));
+        setQuestions(normalized);
+        setFilteredQuestions(normalized);
+      }
+      setIsImportModalOpen(false);
+      setImportText('');
+    } catch (e) {
+      alert('Failed to import questions. Please check the format.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // File upload for import
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setImportText(evt.target.result);
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 md:gap-0">
         <h1 className="text-2xl font-bold text-gray-900">Question Bank</h1>
-        <Button onClick={openAddModal}>Add New Question</Button>
+        <div className="flex gap-2">
+          <Button onClick={openAddModal}>Add New Question</Button>
+          <Button variant="outline" onClick={handleExport}>Export</Button>
+          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>Import</Button>
+        </div>
       </div>
+      {/* Import Modal */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Import Questions"
+        size="lg"
+      >
+        <div className="w-full max-w-lg rounded-2xl p-6 bg-white mx-auto max-h-[80vh] overflow-y-auto">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Paste questions JSON or upload .txt file</label>
+            <textarea
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              className="input-field w-full min-h-[120px]"
+              placeholder="Paste JSON here..."
+            />
+            <input
+              type="file"
+              accept=".txt,application/json,text/plain"
+              className="mt-2"
+              onChange={handleImportFile}
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button variant="outline" onClick={() => setIsImportModalOpen(false)} disabled={importing}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleImport} className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition" disabled={importing || !importText.trim()}>
+              {importing ? 'Importing...' : 'Import'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Filters */}
       <Card>

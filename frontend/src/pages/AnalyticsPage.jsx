@@ -51,7 +51,7 @@ const AnalyticsPage = () => {
 
                 // 3. Fetch details for each unique exam
                 const examDetailsPromises = uniqueExamIds.map(async (examId) => {
-                    const examRes = await fetch(`http://localhost:8090/api/admin/exams/${examId}`, {
+                    const examRes = await fetch(`http://localhost:8090/api/responses/exams/${examId}`, {
                         headers: { 'Authorization': token }
                     });
                     if (examRes.ok) {

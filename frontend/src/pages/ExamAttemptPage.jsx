@@ -1,7 +1,7 @@
 // ExamAttemptPage.jsx
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
@@ -156,7 +156,6 @@ const ExamAttemptPage = () => {
         const responsePayload = {
             responseId: responses[questionIdToUse]?.responseId, // for PUT
             examId: Number(examId),
-            userId: user.id,
             questionId: questionIdToUse,
             answer: selected,
             marksObtained, // This will be saved to the backend
@@ -393,6 +392,11 @@ const ExamAttemptPage = () => {
             <div className="min-h-screen flex items-center justify-center">
                 <Card>
                     <p>Exam not found or failed to load.</p>
+                    <pre style={{color: 'red', fontSize: '0.9em', maxWidth: 600, overflowX: 'auto'}}>
+                        examId: {String(examId)}{"\n"}
+                        user: {JSON.stringify(user, null, 2)}{"\n"}
+                        exam: {JSON.stringify(exam, null, 2)}
+                    </pre>
                     <Link to="/dashboard">
                         <Button className="mt-4">Back to Dashboard</Button>
                     </Link>
@@ -406,6 +410,12 @@ const ExamAttemptPage = () => {
             <div className="min-h-screen flex items-center justify-center">
                 <Card>
                     <p>No questions found for this exam.</p>
+                    <pre style={{color: 'red', fontSize: '0.9em', maxWidth: 600, overflowX: 'auto'}}>
+                        examId: {String(examId)}{"\n"}
+                        user: {JSON.stringify(user, null, 2)}{"\n"}
+                        exam: {JSON.stringify(exam, null, 2)}{"\n"}
+                        questions: {JSON.stringify(questions, null, 2)}
+                    </pre>
                     <Link to="/dashboard">
                         <Button className="mt-4">Back to Dashboard</Button>
                     </Link>

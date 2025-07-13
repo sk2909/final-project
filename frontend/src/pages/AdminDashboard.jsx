@@ -57,7 +57,6 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold gradient-text">Admin Dashboard</h1>
           <p className="text-gray-600 mt-2">Manage your exam portal efficiently</p>
         </div>
-        <Button onClick={() => navigate('/admin/exams')}>Create New Exam</Button>
       </div>
 
       {/* Stats Grid */}
@@ -117,11 +116,19 @@ const AdminDashboard = () => {
         <Card variant="floating">
           <h2 className="text-xl font-semibold mb-6 gradient-text">Quick Actions</h2>
           <div className="space-y-4">
-            <Button className="w-full justify-start text-left" variant="outline" onClick={() => navigate('/admin/exams')}>
+            <Button
+              className="w-full justify-start text-left"
+              variant="outline"
+              onClick={() => navigate('/admin/exams?openCreate=1')}
+            >
               <span className="mr-3">📝</span>
               Create New Exam
             </Button>
-            <Button className="w-full justify-start text-left" variant="outline">
+            <Button
+              className="w-full justify-start text-left"
+              variant="outline"
+              onClick={() => navigate('/admin/questions')}
+            >
               <span className="mr-3">❓</span>
               Add Questions
             </Button>
@@ -129,7 +136,11 @@ const AdminDashboard = () => {
               <span className="mr-3">👥</span>
               Manage Users
             </Button>
-            <Button className="w-full justify-start text-left" variant="outline">
+            <Button
+              className="w-full justify-start text-left"
+              variant="outline"
+              onClick={() => navigate('/result')}
+            >
               <span className="mr-3">📊</span>
               View Reports
             </Button>

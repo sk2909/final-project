@@ -1,4 +1,5 @@
  
+ 
 package com.exam_portal.exam_management_service.controller;
 
 import com.exam_portal.exam_management_service.model.Response;
@@ -238,6 +239,13 @@ public class ResponseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT', 'EXAMINER')")
     public ResponseEntity<List<Result>> getAllResultsByUserId(@RequestParam Long userId) {
         List<Result> results = resultRepository.findByUserId(userId);
+        return ResponseEntity.ok(results);
+    }
+       // Get all results for all users
+    @GetMapping("/results/all")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EXAMINER')")
+    public ResponseEntity<List<Result>> getAllResults() {
+        List<Result> results = resultRepository.findAll();
         return ResponseEntity.ok(results);
     }
 }
